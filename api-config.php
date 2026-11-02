@@ -42,32 +42,45 @@ function db(): PDO
     static $pdo = null;
     static $schemaReady = false;
     if ($pdo instanceof PDO) return $pdo;
-    // Local XAMPP defaults; set InfinityFree values in the production branch below.
-    $isLocalHost = in_array(strtolower((string)($_SERVER['HTTP_HOST'] ?? '')), ['localhost', '127.0.0.1'], true);
-    if ($isLocalHost) {
-        $host = getenv('EASYBUY_DB_HOST') ?: '127.0.0.1';
-        $name = getenv('EASYBUY_DB_NAME') ?: 'easybuy';
-        $user = getenv('EASYBUY_DB_USER') ?: 'root';
-        $pass = getenv('EASYBUY_DB_PASS') ?: '';
-    } else {
-        // Replace only the password placeholder with the MySQL password from InfinityFree.
-       $host = getenv('EASYBUY_DB_HOST') ?: 'sql213.infinityfree.com';
-       $name = getenv('EASYBUY_DB_NAME') ?: 'if0_43324860_easybuycampuscart';
-       $user = getenv('EASYBUY_DB_USER') ?: 'if0_43324860';
-       $pass = getenv('EASYBUY_DB_PASS') ?: ''; // Set this to your hosting MySQL password before deployment.
+  if ($isLocalHost) {
+    $host = getenv('EASYBUY_DB_HOST') ?: '127.0.0.1';
+    $port = (int)(getenv('EASYBUY_DB_PORT') ?: 3306);
+    $name = getenv('EASYBUY_DB_NAME') ?: 'easybuy';
+    $user = getenv('EASYBUY_DB_USER') ?: 'root';
+    $pass = getenv('EASYBUY_DB_PASS') ?: '';
+
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ];
+} else {
+    $host = getenv('EASYBUY_DB_HOST') ?: '';
+    $port = (int)(getenv('EASYBUY_DB_PORT') ?: 15429);
+    $name = getenv('EASYBUY_DB_NAME') ?: '';
+    $user = getenv('EASYBUY_DB_USER') ?: '';
+    $pass = getenv('EASYBUY_DB_PASS') ?: '';
+    $caFile = getenv('EASYBUY_DB_SSL_CA') ?: '';
+
+    if ($host === '' || $name === '' || $user === '' || $pass === '') {
+        throw new RuntimeException('Production database settings are missing.');
     }
-    $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false];
-    try {
-        $pdo = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass, $options);
-    } catch (PDOException $e) {
-        // XAMPP first-run recovery: create only the configured database if it is missing.
-        if (stripos($e->getMessage(), 'Unknown database') === false) throw $e;
-        $safeName = preg_replace('/[^A-Za-z0-9_]/', '', $name);
-        if ($safeName === '' || $safeName !== $name) throw $e;
-        $bootstrap = new PDO("mysql:host=$host;charset=utf8mb4", $user, $pass, $options);
-        $bootstrap->exec("CREATE DATABASE IF NOT EXISTS `{$safeName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        $pdo = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass, $options);
+
+    if ($caFile === '' || !is_file($caFile)) {
+        throw new RuntimeException('Aiven SSL CA certificate is missing.');
     }
+
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::MYSQL_ATTR_SSL_CA => $caFile,
+        PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => true,
+    ];
+}
+
+$dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+$pdo = new PDO($dsn, $user, $pass, $options);
     if (!$schemaReady) {
         // Create missing seller tables safely. Existing rows/tables are never dropped.
         // Persistent buyer accounts. Existing product/order data is preserved.
