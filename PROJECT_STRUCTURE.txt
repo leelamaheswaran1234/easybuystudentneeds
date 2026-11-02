@@ -1,0 +1,30 @@
+EASYBUY ROOT STRUCTURE
+======================
+
+Buyer storefront:       index.php
+Seller Studio:          sellerindex.php
+Admin dashboard:        adminindex.php
+Admin login:             admin-login.php
+Admin first-time setup:  admin-register.php
+Admin logout:            admin-logout.php
+
+Authentication:
+Buyer login/register/logout: buyer-login.php, buyer-register.php, buyer-logout.php
+Seller login/register/logout: seller-login.php, seller-register.php, seller-logout.php
+Shared authentication core: auth.php
+
+Database connection:    api-config.php
+API endpoints:          api-*.php (all in this same root folder)
+Seller assets:          seller.css, seller.js
+Product images:         images/
+
+There are no seller/, admin/, or api/ source folders. All PHP files are in this
+main project folder. Keep the images/ folder and its uploads subfolder for
+product image assets and upload protection rules.
+
+For XAMPP, copy this folder to htdocs/EasyBuy, import database.sql if the
+database is not already present, configure api-config.php, then open:
+http://localhost/EasyBuy/
+
+This is a file/path reorganization. Confirm database credentials and run the
+site against your own MySQL server before deployment.
